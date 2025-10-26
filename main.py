@@ -5,12 +5,14 @@ import collections.abc # just for typechecking that we have things that can be u
 import matplotlib.pyplot as plt
 import pprint
 
-type node = collections.abc.Hashable
-type ptwo = tuple[node,node] # TODO: These are ordered, is that fine? (Currently working on the assumpution that we don't have both ab and ba in original relation)
+type leaf = collections.abc.Hashable
+type ptwo = tuple[leaf,leaf] # TODO: These are ordered, is that fine? (Currently working on the assumpution that we don't have both ab and ba in original relation)
 type ptwo_bin_rel = dict[ptwo, set[ptwo]] # TODO: Should they be dictionaries or would it be preferable to have for example a graph represent the relation?
 
 
-def get_extended_support(r: ptwo_bin_rel) -> set[ptwo]: # Should this take X as parameter aswell? in this case change the second for loop. YES
+# TODO: add a step/function to verify that the relation R actually is defined over the squared powerset of X
+
+def get_extended_support(X: set[leaf], r: ptwo_bin_rel) -> set[ptwo]: 
     """
     Input: A dict representing a binaryrelation r (on P2(X))
     Output: The extended support of r
@@ -21,11 +23,9 @@ def get_extended_support(r: ptwo_bin_rel) -> set[ptwo]: # Should this take X as 
         for v in vs:
             unique_tuples.add(v)
             
-    out = unique_tuples.copy()
-    for (u,v) in unique_tuples:
-        out.add((u,u))
-        out.add((v,v))
-    return out
+    for p in X:
+        unique_tuples.add((p,p))
+    return unique_tuples
 
 
 def get_r_plus(r: ptwo_bin_rel, supp_plus: set[ptwo]) -> ptwo_bin_rel:
@@ -205,9 +205,9 @@ def find_roots(g: nx.DiGraph) -> set[ptwo]:
     return roots
         
 
-def Algorithm_1(r: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
+def Algorithm_1(X: set[leaf], r: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
     r = sort_relation(r)
-    supp_plus = get_extended_support(r)                 # 1
+    supp_plus = get_extended_support(X, r)              # 1
     r_plus = get_r_plus(r, supp_plus)                   # 2
     if X1(r_plus) and X2(r, r_plus):                    # 3
         equiv_r_plus = get_equiv_r_plus(r_plus)         # 4
@@ -251,6 +251,7 @@ def sort_relation(r: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 def main():
+    X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
     r: ptwo_bin_rel = {
         ("x","y"): {("a","b"), ("q","t")},
         ("u","v"): {("b","a")}
@@ -259,12 +260,12 @@ def main():
         
     }
     r = sort_relation(r)
-    rp = get_r_plus(r, get_extended_support(r))
+    rp = get_r_plus(r, get_extended_support(X, r))
     pprint.pp(rp)
     print(X1(rp))
     print(X2(r, rp))
 
-    res = Algorithm_1(r)
+    res = Algorithm_1(X, r)
     if type(res) == tuple:
         g_r, n_r = res
     else:
