@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+
 import networkx as nx
 import collections.abc # just for typechecking that we have things that can be used as nodes
 
 # For printing, testing and debugging
 import matplotlib.pyplot as plt
 import pprint
+
+from parse_input import read_constraints_csv
 
 
 type leaf = collections.abc.Hashable
@@ -14,11 +18,11 @@ This restriction is placed so that they will work as nodes in networkx.
 
 type ptwo = tuple[leaf,leaf] 
 """
-The type ptwo represents 1 and 2 element subsets of the leaf set X.  
+The type ptwo represents elements in 𝒫₂(X), 1 and 2 element subsets of the leaf set X.  
 Since sets are not ordered, {a, b} = {b, a} and {a,a} = {a}. 
 They are implemented here as ordered pairs (tuples). 
 For tuples (a,b) != (b,a). So we make sure that for each set {a,b}={b,a}, we consistently represent it either only as (a,b) or only as (b,a).   
-Similarily since (a,a) != (a,), we always represent (a,) as (a,a).
+Similarily since (a,a) != (a,), we always represent both {a} and {a,a} as (a,a).
 """
 
 type ptwo_bin_rel = dict[ptwo, set[ptwo]] 
@@ -28,7 +32,7 @@ A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only 
 """
 
 
-# TODO: add a step/function to verify that the relation R actually is defined over the squared powerset of X
+# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) x P_2(X)
 
 
 
@@ -36,7 +40,7 @@ def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     """
     Input: 
         X: A set of leaf nodes.
-        R: A dict representing a binaryrelation on P_2(X) x P_2(X).
+        R: A dict representing a binaryrelation on 𝒫₂(X) ⨉ 𝒫₂(X).
     Output: 
         The extended support of R
 
@@ -62,54 +66,88 @@ def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     return out
 
 
-def get_r_plus(R: ptwo_bin_rel, supp_plus: set[ptwo]) -> ptwo_bin_rel:
-    s: ptwo_bin_rel = R
+def get_r_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
+    """
+    Input:
+        R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X)
+        supp_plus_R: The extended support of R
+    Output:
+        The relexive-, transitive-, 2-consistent closure of R, called R_plus.
+
+    This is done as described in Theorem 4.5:
+        Set S = R
+        R1: Add pSp for each p in supp_plus_R
+        Repeatedly apply the following rules until they can no longer be applied:
+            R2: if pSq and qSr, add pSr
+            R3: if ab in supp_plus_R and acSxy and bdSxy for some c,d in X, add abSxy
+    """
+    S: ptwo_bin_rel = R
     
     #R1
-    for p in supp_plus:
-        if not p in s:
-            s[p] = {p}
+    for p in supp_plus_R:
+        if not p in S:
+            S[p] = {p}
         else:
-            s[p].add(p)
+            S[p].add(p)
 
     while True:
         change_made = False
 
         #R2
-        change_made = R2(s)
+        change_made = R2(S)
         
         #R3
-        change_made = R3(s, supp_plus)
+        change_made = R3(S, supp_plus_R)
         
         if not change_made:
             break           
 
-    return s
+    return S
 
 
-def R2(s: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer algorithm or similar to use?
+def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer algorithm or similar to use?
     """
-    For all p S q, 
-        for all q S r, add p S r 
+    Input:
+        S: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        True if one or more application of the rule R2 was performed, False otherwise.
 
-    repeating this until no change is made gives a transitive closure.
+    For each pSq in S, S[p] contains q. 
+    For each qSr in S, S[q] contains r.
+    Loops over all pair pSq in the dictionary, and for each such pair adds all r's in S[q] to S[p].
+
+    Repeated application until the function returns False gives the transitive closure of S.
     """
     change_made = False
-    for p, qs in s.items():
+    for p, qs in S.items():
             p_size = len(qs)
 
             to_add: set[ptwo] = set()
             for q in qs:
-                rs = s[q]
+                rs = S[q]
                 to_add.update(rs)
             if len(to_add) > 0: # Needed to not add empty sets as elements
-                s[p].update(to_add)
+                S[p].update(to_add)
 
-            if p_size != len(s[p]):
+            if p_size != len(S[p]):
                 change_made = True
     return change_made
 
 def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
+    """
+    Input:
+        S: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+        supp_plus: The extended support of S
+    Output:
+        True if one or more applications of the rule R3 was performed, False otherwise.
+
+    Looks at all pairs of keys (a,b) and (c,d) in S, 
+    for each combination (m,n) among (a,c), (a,d), (b,c), (b,d) in the extended support, 
+    Takes all (x,y)'s in the intersecion of S[(a,b)] and S[(c,d)] and adds (m,n)S(x,y).
+
+    Note that this preserves the propery that any element {a,b} of 𝒫₂(X) in S has a consistent representation 
+    since we only add values to keys already in the extended support, and the extended support uses consistent represenation.
+    """
     change_made = False
     for (a, b) in s:
         for (c, d) in s:
@@ -140,15 +178,36 @@ def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
 
 
 
-def X1(r_plus: ptwo_bin_rel) -> bool:
-    for (a, b), pqs in r_plus.items():
+def X1(R: ptwo_bin_rel) -> bool:
+    """
+    Input:
+        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        True if the relation R satisifies condition X1 given in definition 5.1
+
+    The condition says that for all a,b,x in X: {a,b} != {x,x} implies ({a,b},{x,x}) not in R_plus.
+    Equivalently, for all a,b,x in X: if {a,b}R_plus{x,x}, then {a,b} == {x,x}. 
+    """
+    for (a, b), pqs in R.items():
         for (p, q) in pqs:
             if p == q and (p != a or p != b):
                 return False
     return True
 
 def X2(r: ptwo_bin_rel, r_plus: ptwo_bin_rel) -> bool:
+    """
+    Input:
+        R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        True if the relation R satisifies condition X2 given in definition 5.1
 
+    The condition says that for all a,b,x,y in X: 
+        if {a,b}tc(R){x,y} but it's not the case that {x,y}tc(R){a,b}, 
+        then it's not the case that {x,y}R_plus{a,b}.
+
+    tc(R) is the tranisitive closure of R.
+    """
     r_tc = r 
     while True:
         if not R2(r_tc):
@@ -263,9 +322,9 @@ def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.Di
 def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
-        R: a dictionary representing a binary relation over P_2(X) x P_2(X), with some sets {a,b} possibly represented as both (a,b) and (b,a).
+        R: a dictionary representing a binary relation over 𝒫₂(X) ⨉ 𝒫₂(X), with some sets {a,b} possibly represented as both (a,b) and (b,a).
     Output:
-        Modifies R and returns it as a new representation of the relation where any element {a,b} of P_2(X) now has a consistent representation.
+        Modifies R and returns it as a new representation of the relation where any element {a,b} of 𝒫₂(X) now has a consistent representation.
     """
 
     # When a representation (a,b) or (b,a) for the each set {a,b} is first seen, save it as canoncial.
@@ -301,11 +360,13 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 def main():
+    # X, r = read_constraints_csv("test_file.csv")
     X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
     r: ptwo_bin_rel = {
         ("x","y"): {("a","b"), ("q","t")},
         ("u","v"): {("b","a")}
     }
+    pprint.pp(r)
     r2: ptwo_bin_rel = {
         
     }
@@ -320,21 +381,33 @@ def main():
         g_r, n_r = res
     else:
         return
-    pos = nx.spiral_layout(g_r)
-    nx.draw(g_r, pos)
-    nx.draw_networkx_labels(g_r, pos)
-    plt.show()
+    
 
-    pos = nx.spiral_layout(n_r)
+    # Code to render dags start here
+    
+    for layer, nodes in enumerate(nx.topological_generations(n_r)):
+        # `multipartite_layout` expects the layer as a node attribute, so add the
+        # numeric layer value as a node attribute
+        for node in nodes:
+            n_r.nodes[node]["layer"] = layer
+
+    leaf_list = []
+    for node in n_r.nodes:
+        if len(node) == 1: #type: ignore
+            leaf_list.append(node)
+    leaf_layer = max(n_r.nodes[node]["layer"] for node in leaf_list)
+    for node in leaf_list:
+        n_r.nodes[node]["layer"] = leaf_layer
+
+    pos = nx.multipartite_layout(n_r, subset_key="layer")
+
     nx.draw(n_r, pos)
     nx.draw_networkx_labels(n_r, pos)
     plt.show()
-    # G = nx.DiGraph(r)
-    # nx.draw(G)
-    # plt.show()
+
+    # Code to render dags end here
     
-    # print(G.nodes)
-    # print(type(G.nodes))
+    
 
 if __name__ == "__main__":
     main()
