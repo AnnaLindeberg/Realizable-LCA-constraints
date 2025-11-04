@@ -222,6 +222,15 @@ def X2(r: ptwo_bin_rel, r_plus: ptwo_bin_rel) -> bool:
 
 
 def get_equiv_r_plus(r_plus: ptwo_bin_rel) -> ptwo_bin_rel:
+    """
+    Input:
+        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        An equivalence relation equiv_r_plus as described in Lemma 5.3
+        
+    The relation equiv_r_plus is a binary relation on the extended support of R, 
+    and defined such that p equiv_r_plus q iff p R_plus q and q R_plus p.
+    """
 
     equiv_rel: ptwo_bin_rel = {p: {p} for p in r_plus.keys()}
 
@@ -234,6 +243,12 @@ def get_equiv_r_plus(r_plus: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 def get_q_set(equiv_r_plus: ptwo_bin_rel) -> set[ptwo]:
+    """
+    Input:
+        equiv_r_plus: An equivalence relation on the extended support of some relation R.
+    Output:
+        A set Q_set containing one element from each equivalence class in equiv_r_plus.
+    """
 
     to_keep = set()
     to_remove = set()
@@ -247,45 +262,68 @@ def get_q_set(equiv_r_plus: ptwo_bin_rel) -> set[ptwo]:
     return to_keep
 
 
-def get_order_r_plus(q_set: set[ptwo], r_plus: ptwo_bin_rel) -> ptwo_bin_rel: 
-    order_r_plus = {p: {p} for p in q_set} # These will all be removed again later
+def get_order_r_plus(Q_set: set[ptwo], R_plus: ptwo_bin_rel) -> ptwo_bin_rel: 
+    """
+    Input:
+        Q_set: the set of equivalence classes in equiv_r_plus
+        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
+    Output:
+        An ordering of the equivalnce classes in Q_set as defined in Lemma 5.4
 
-    for p in q_set:
-        for q in q_set:
-            if q in r_plus[p]:
+    For two classes [p] and [q] in Q_set, we have that [p] <= [q] iff p R_plus q. 
+    """
+
+    order_r_plus = {p: {p} for p in Q_set} # These will all be removed again later
+
+    for p in Q_set:
+        for q in Q_set:
+            if q in R_plus[p]:
                 order_r_plus[p].add(q)
 
     return order_r_plus
 
 def get_canoncial_dag(order_r_plus: ptwo_bin_rel) -> nx.DiGraph:
+    """
+    Input:
+        order_r_plus: An ordering of the equivalence classes of R_plus
+    Output:
+        The canonical dag of R as a networkx DiGraph
 
-    # for p, qs in order_r_plus.items():
-    #     qs.remove(p)
+    See Definition 5.5. 
+    """
 
-    # pprint.pp(order_r_plus)
-
-    g_r = nx.DiGraph(order_r_plus).reverse() # reverse it so we get edges q -> p instead of p -> q
-    g_r.remove_edges_from(nx.selfloop_edges(g_r)) 
+    g_r = nx.DiGraph(order_r_plus).reverse()        # reverse it so we get edges q -> p instead of p -> q
+                                                    # This performs step 1 and 2 in definition 5.5, but also adds a self-loop to each class
+    g_r.remove_edges_from(nx.selfloop_edges(g_r))   # This removes the self-loops
     
+    # Find all classes [aa]
     leaf_list = []
     for node in g_r.nodes:
         if node[0] == node[1]: #type: ignore
             leaf_list.append(node)
     
-    leaf_dict = {node: node[0] for node in leaf_list}
+    leaf_dict = {node: node[0] for node in leaf_list} # Rename each (a,a) to a
     g_r = nx.relabel_nodes(g_r, leaf_dict)
 
     return g_r
 
 def get_canoncial_network(g_r) -> nx.DiGraph:
+    """
+    Input:
+        G_r: the canonical DAG for a relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
+    Output:
+        The caonincal network of R as networkx DiGraph
 
-    n_r = nx.transitive_reduction(g_r)
+    See definition 6.3
+    """
 
-    roots = find_roots(n_r)
+    n_r = nx.transitive_reduction(g_r)  # Removing all shortcuts from G_r
 
-    if len(roots) != 1:
+    roots = find_roots(n_r)             # Find all roots of G_r
+
+    if len(roots) != 1:                                                             # TODO: Can we ever have zero roots in G_r?
         for node in roots:
-            n_r.add_edge("rho", node)
+            n_r.add_edge("rho", node)   # If there are multiple roots, connect them all as children to a new root rho.
 
     return n_r
 
@@ -297,9 +335,8 @@ def find_roots(G: nx.DiGraph) -> set[ptwo]:
         The set of root nodes in G 
     """
     roots = set()
-    print(G.in_degree)
     for node, degree in G.in_degree:
-        if degree == 0:
+        if degree == 0:                 # A node is a root if it has indegree 0
             roots.add(node)
     return roots
         
