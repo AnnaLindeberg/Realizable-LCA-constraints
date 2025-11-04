@@ -5,31 +5,65 @@ import collections.abc # just for typechecking that we have things that can be u
 import matplotlib.pyplot as plt
 import pprint
 
+
 type leaf = collections.abc.Hashable
-type ptwo = tuple[leaf,leaf] # TODO: These are ordered, is that fine? (Currently working on the assumpution that we don't have both ab and ba in original relation)
-type ptwo_bin_rel = dict[ptwo, set[ptwo]] # TODO: Should they be dictionaries or would it be preferable to have for example a graph represent the relation?
+"""
+Elements of the leaf set X can be of any Hashable type. 
+This restriction is placed so that they will work as nodes in networkx.
+"""
+
+type ptwo = tuple[leaf,leaf] 
+"""
+The type ptwo represents 1 and 2 element subsets of the leaf set X.  
+Since sets are not ordered, {a, b} = {b, a} and {a,a} = {a}. 
+They are implemented here as ordered pairs (tuples). 
+For tuples (a,b) != (b,a). So we make sure that for each set {a,b}={b,a}, we consistently represent it either only as (a,b) or only as (b,a).   
+Similarily since (a,a) != (a,), we always represent (a,) as (a,a).
+"""
+
+type ptwo_bin_rel = dict[ptwo, set[ptwo]] 
+"""
+The type ptwo_bin_rel represent a binary relation R over ptwo times ptwo.
+A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only if D[(a,b)] contains (x,y).  
+"""
 
 
 # TODO: add a step/function to verify that the relation R actually is defined over the squared powerset of X
 
-def get_extended_support(X: set[leaf], r: ptwo_bin_rel) -> set[ptwo]: 
+
+
+def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     """
-    Input: A dict representing a binaryrelation r (on P2(X))
-    Output: The extended support of r
+    Input: 
+        X: A set of leaf nodes.
+        R: A dict representing a binaryrelation on P_2(X) x P_2(X).
+    Output: 
+        The extended support of R
+
+    Given a binary relation R, get the extended support supp_plus_R.
+
+    supp_R = { (p,q) in P_2(X) | there is some (a,b) in P_2(X) with (p,q)R(a,b) or (a,b)R(p,q)}
+
+    supp_plus_R = supp_R union {(x,x) | x in X}
     """
 
-    unique_tuples = set(r.keys())
-    for vs in r.values():
-        for v in vs:
-            unique_tuples.add(v)
-            
-    for p in X:
-        unique_tuples.add((p,p))
-    return unique_tuples
+    out = set(R.keys())
+    for qs in R.values():
+        for q in qs:
+            out.add(q)
+
+    # At this point out = supp_R
+
+    for x in X:
+        out.add((x,x))
+
+    # At this point out = supp_plus_R
+
+    return out
 
 
-def get_r_plus(r: ptwo_bin_rel, supp_plus: set[ptwo]) -> ptwo_bin_rel:
-    s: ptwo_bin_rel = r
+def get_r_plus(R: ptwo_bin_rel, supp_plus: set[ptwo]) -> ptwo_bin_rel:
+    s: ptwo_bin_rel = R
     
     #R1
     for p in supp_plus:
@@ -115,7 +149,7 @@ def X1(r_plus: ptwo_bin_rel) -> bool:
 
 def X2(r: ptwo_bin_rel, r_plus: ptwo_bin_rel) -> bool:
 
-    r_tc = r # TODO: Has this been changed to just look at r instead of the transitive closure?
+    r_tc = r 
     while True:
         if not R2(r_tc):
             break
@@ -196,56 +230,72 @@ def get_canoncial_network(g_r) -> nx.DiGraph:
 
     return n_r
 
-def find_roots(g: nx.DiGraph) -> set[ptwo]:
+def find_roots(G: nx.DiGraph) -> set[ptwo]:
+    """
+    Input:
+        G: A networkx DiGraph
+    Output:
+        The set of root nodes in G 
+    """
     roots = set()
-    print(g.in_degree)
-    for node, degree in g.in_degree:
+    print(G.in_degree)
+    for node, degree in G.in_degree:
         if degree == 0:
             roots.add(node)
     return roots
         
 
-def Algorithm_1(X: set[leaf], r: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
-    r = sort_relation(r)
-    supp_plus = get_extended_support(X, r)              # 1
-    r_plus = get_r_plus(r, supp_plus)                   # 2
-    if X1(r_plus) and X2(r, r_plus):                    # 3
-        equiv_r_plus = get_equiv_r_plus(r_plus)         # 4
-        q_set = get_q_set(equiv_r_plus)                 # 5
-        order_r_plus = get_order_r_plus(q_set, r_plus)  # 6
-        g_r = get_canoncial_dag(order_r_plus)           # 7
-        n_r = get_canoncial_network(g_r)                # 8
-        return g_r, n_r                                 # 9
+def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
+    R = unify_representation(R)
+    supp_plus_R = get_extended_support(X, R)            # 1
+    R_plus = get_r_plus(R, supp_plus_R)                 # 2
+    if X1(R_plus) and X2(R, R_plus):                    # 3
+        equiv_R_plus = get_equiv_r_plus(R_plus)         # 4
+        Q_set = get_q_set(equiv_R_plus)                 # 5
+        order_R_plus = get_order_r_plus(Q_set, R_plus)  # 6
+        G_r = get_canoncial_dag(order_R_plus)           # 7
+        N_r = get_canoncial_network(G_r)                # 8
+        return G_r, N_r                                 # 9
     return False                                        # 10
 
 
 
-def sort_relation(r: ptwo_bin_rel) -> ptwo_bin_rel:
-    # Makes it so that we never have both (a, b) and (b, a) in the original relation.
-    # Note, currently destructive on r
-    # Could probably make an easier implementation if assuming the node elements in ptwo are comparable, which should be fine
+def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
+    """
+    Input:
+        R: a dictionary representing a binary relation over P_2(X) x P_2(X), with some sets {a,b} possibly represented as both (a,b) and (b,a).
+    Output:
+        Modifies R and returns it as a new representation of the relation where any element {a,b} of P_2(X) now has a consistent representation.
+    """
 
+    # When a representation (a,b) or (b,a) for the each set {a,b} is first seen, save it as canoncial.
     canonical_pairs = set()
 
-    for (p, q) in r:
-        if (q, p) in canonical_pairs:
-            r[(q,p)].update(r.pop((p, q)))
+    # Goes over the keys (left-hand sides of the relation) 
+    # and merges any pairs of keys (a,b) and (b,a) into the canonical key.
+    for (p, q) in R:
+        if (q, p) in canonical_pairs and p != q:    # If the opposite ordering is already canoncial
+            R[(q,p)].update(R.pop((p, q)))          # adds all elements of R[(p,q)] to R[(q, p)] and removes R[(p,q)]
         else:
             canonical_pairs.add((p, q))
     
+
+    # Goes over all values (right-hand sides of the relation) 
+    # and saves any entries (p,q)R(x,y) where (y,x) has already been decided as canoncial.
     to_change = []
-    for pq, xys in r.items():
+    for pq, xys in R.items():
         for (x, y) in xys:
-            if (y, x) in canonical_pairs:
+            if (y, x) in canonical_pairs and x != y:
                 to_change.append((pq, (x, y)))
             else:
                 canonical_pairs.add((x, y))
 
+    # for each saved entry (p,q)R(x,y), remove it and add the canonical representation (p,q)R(y,x)
     for (pq, (x, y)) in to_change:
-        r[pq].remove((x, y))
-        r[pq].add((y, x))
+        R[pq].remove((x, y))
+        R[pq].add((y, x))
 
-    return r
+    return R
 
 
 
@@ -259,7 +309,7 @@ def main():
     r2: ptwo_bin_rel = {
         
     }
-    r = sort_relation(r)
+    r = unify_representation(r)
     rp = get_r_plus(r, get_extended_support(X, r))
     pprint.pp(rp)
     print(X1(rp))
