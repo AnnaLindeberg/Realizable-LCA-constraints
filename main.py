@@ -34,6 +34,7 @@ A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only 
 
 # TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) x P_2(X)
 
+# TODO: Double check that no changes are made by sideeffects R or R_plus
 
 
 def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
@@ -81,7 +82,7 @@ def get_r_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
             R2: if pSq and qSr, add pSr
             R3: if ab in supp_plus_R and acSxy and bdSxy for some c,d in X, add abSxy
     """
-    S: ptwo_bin_rel = R
+    S: ptwo_bin_rel = R.copy()
     
     #R1
     for p in supp_plus_R:
@@ -116,7 +117,7 @@ def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer alg
     For each qSr in S, S[q] contains r.
     Loops over all pair pSq in the dictionary, and for each such pair adds all r's in S[q] to S[p].
 
-    Repeated application until the function returns False gives the transitive closure of S.
+    Repeated application until False is returned gives the transitive closure of S.
     """
     change_made = False
     for p, qs in S.items():
@@ -124,10 +125,12 @@ def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer alg
 
             to_add: set[ptwo] = set()
             for q in qs:
+                if q not in S:
+                    continue
                 rs = S[q]
                 to_add.update(rs)
             if len(to_add) > 0: # Needed to not add empty sets as elements
-                S[p].update(to_add)
+                S[p].update(to_add) 
 
             if p_size != len(S[p]):
                 change_made = True
@@ -178,6 +181,8 @@ def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
 
 
 
+# TODO: Double check X1 and X2
+
 def X1(R: ptwo_bin_rel) -> bool:
     """
     Input:
@@ -194,7 +199,7 @@ def X1(R: ptwo_bin_rel) -> bool:
                 return False
     return True
 
-def X2(r: ptwo_bin_rel, r_plus: ptwo_bin_rel) -> bool:
+def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
     """
     Input:
         R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
@@ -208,15 +213,16 @@ def X2(r: ptwo_bin_rel, r_plus: ptwo_bin_rel) -> bool:
 
     tc(R) is the tranisitive closure of R.
     """
-    r_tc = r 
+    r_tc = R.copy()
     while True:
         if not R2(r_tc):
             break
     
     for ab, xys in r_tc.items():
         for xy in xys:
-            if (not ab in r_tc[xy]) and (ab in r_plus[xy]):
-                return False
+            if (xy not in r_tc) or (ab not in r_tc[xy]):
+                if (ab in R_plus[xy]):
+                    return False
             
     return True
 
@@ -343,6 +349,7 @@ def find_roots(G: nx.DiGraph) -> set[ptwo]:
 
 def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
     R = unify_representation(R)
+    pprint.pp(R)
     supp_plus_R = get_extended_support(X, R)            # 1
     R_plus = get_r_plus(R, supp_plus_R)                 # 2
     if X1(R_plus) and X2(R, R_plus):                    # 3
@@ -355,7 +362,8 @@ def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.Di
     return False                                        # 10
 
 
-
+# TODO: Will the labels/nodes/leafs/groundset always be strings or some other comparable type? 
+# Then will probably be easier to just say that every set {a,b} = {b,a} is represented as (a,b) iff a < b instead of this.
 def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
@@ -397,21 +405,21 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 def main():
-    # X, r = read_constraints_csv("test_file.csv")
-    X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
-    r: ptwo_bin_rel = {
-        ("x","y"): {("a","b"), ("q","t")},
-        ("u","v"): {("b","a")}
-    }
-    pprint.pp(r)
+    X, r = read_constraints_csv("examples/example_3_9.csv")
+    # X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
+    # r: ptwo_bin_rel = {
+    #     ("x","y"): {("a","b"), ("q","t")},
+    #     ("u","v"): {("b","a")}
+    # }
+    # pprint.pp(r)
     r2: ptwo_bin_rel = {
         
     }
     r = unify_representation(r)
     rp = get_r_plus(r, get_extended_support(X, r))
-    pprint.pp(rp)
-    print(X1(rp))
-    print(X2(r, rp))
+    # pprint.pp(rp)
+    # print(X1(rp))
+    # print(X2(r, rp))
 
     res = Algorithm_1(X, r)
     if type(res) == tuple:

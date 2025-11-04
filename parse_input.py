@@ -10,13 +10,9 @@ def read_constraints_csv(filename: str) -> tuple[set, dict]:
         leafs = rdr.__next__()
         leafs = {leaf.strip() for leaf in leafs}
 
-        constraints = []
-        for line in enumerate(rdr):
-            constraints.append(line)
-    
         R = {}
 
-        for i, constraint in enumerate(constraints):
+        for i, constraint in enumerate(rdr):
             if len(constraint) < 4:
                 raise ValueError(f"Wrong formatting for constraint nr {i}, too few values. Constraint abRcd should be written a,b,c,d")
             if len(constraint) > 4:
