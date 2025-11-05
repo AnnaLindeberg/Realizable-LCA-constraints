@@ -404,25 +404,33 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 
-def draw_DAG(DAG: nx.DiGraph) -> None:
+def draw_DAG(G: nx.DiGraph) -> None:
+    """
+    Input:
+        G: A networkx DiGraph where internal nodes are tuples of leaves
+    Output:
+        None
+    
+    Draws the network with layers aligned using matplotlib and networkx multipartite layout.
+    """
 
-    for layer, nodes in enumerate(nx.topological_generations(DAG)):
+    for layer, nodes in enumerate(nx.topological_generations(G)):
         for node in nodes:
-            DAG.nodes[node]["layer"] = layer
+            G.nodes[node]["layer"] = layer
 
     leaf_list = []
-    for node in DAG.nodes:
-        if len(node) == 1: #type: ignore
+    for node in G.nodes:
+        if type(node) != tuple and node != "rho":   # When constructing the canonical dag/network for R, we relabeled all leaves to not be tuples anymore.
             leaf_list.append(node)
-    leaf_layer = max(DAG.nodes[node]["layer"] for node in leaf_list)
+    leaf_layer = max(G.nodes[node]["layer"] for node in leaf_list)
 
     for node in leaf_list:
-        DAG.nodes[node]["layer"] = leaf_layer
+        G.nodes[node]["layer"] = leaf_layer
 
-    pos = nx.multipartite_layout(DAG, subset_key="layer")
+    pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
 
-    nx.draw(DAG, pos)
-    nx.draw_networkx_labels(DAG, pos)
+    nx.draw(G, pos)
+    nx.draw_networkx_labels(G, pos)
     plt.show()
 
 
