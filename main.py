@@ -416,19 +416,20 @@ def draw_DAG(G: nx.DiGraph) -> None:
         for node in nodes:
             G.nodes[node]["layer"] = layer
 
-    leaf_list = []
-    for node in G.nodes:
-        if type(node) != tuple and node != "rho":   # When constructing the canonical dag/network for R, we relabeled all leaves to not be tuples anymore.
-            leaf_list.append(node)
-    leaf_layer = max(G.nodes[node]["layer"] for node in leaf_list)
+    # TODO: This is bugged and sometimes draws the network wrong
+    # leaf_list = []
+    # for node in G.nodes:
+    #     if type(node) != tuple and node != "rho":   # When constructing the canonical dag/network for R, we relabeled all leaves to not be tuples anymore.
+    #         leaf_list.append(node)
+    # leaf_layer = min(G.nodes[node]["layer"] for node in leaf_list)
 
-    for node in leaf_list:
-        G.nodes[node]["layer"] = leaf_layer
+    # for node in leaf_list:
+    #     G.nodes[node]["layer"] = leaf_layer
 
     pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
 
-    nx.draw(G, pos)
-    nx.draw_networkx_labels(G, pos)
+    nx.draw(G, pos=pos)
+    nx.draw_networkx_labels(G, pos=pos)
     plt.show()
 
 
