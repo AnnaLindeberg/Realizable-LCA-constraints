@@ -93,15 +93,13 @@ def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
             S[p].add(p)
 
     while True:
-        change_made = False
-
         #R2
-        change_made = R2(S)
+        change_r2 = R2(S)
         
         #R3
-        change_made = R3(S, supp_plus_R)
+        change_r3 = R3(S, supp_plus_R)
         
-        if not change_made:
+        if not change_r2 and not change_r3:
             break           
 
     return S
@@ -438,7 +436,12 @@ def draw_DAG(G: nx.DiGraph) -> None:
 
 
 def main():
-    X, r = read_constraints_csv("test_file.csv")
+
+    try:
+        X, r = read_constraints_csv("examples/figure_4.csv")
+    except (ValueError, FileNotFoundError) as e:
+        print(e)
+        return
 
     # X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
     # r: ptwo_bin_rel = {
