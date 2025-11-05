@@ -2,6 +2,7 @@
 
 import networkx as nx
 import collections.abc # just for typechecking that we have things that can be used as nodes
+import copy
 
 # For printing, testing and debugging
 import matplotlib.pyplot as plt
@@ -34,7 +35,7 @@ A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only 
 
 # TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) x P_2(X)
 
-# TODO: Double check that no changes are made by sideeffects R or R_plus
+# TODO: Double check that no changes are made by sideeffects to R or R_plus
 
 
 def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
@@ -67,7 +68,7 @@ def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     return out
 
 
-def get_r_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
+def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
     """
     Input:
         R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X)
@@ -82,7 +83,7 @@ def get_r_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
             R2: if pSq and qSr, add pSr
             R3: if ab in supp_plus_R and acSxy and bdSxy for some c,d in X, add abSxy
     """
-    S: ptwo_bin_rel = R.copy()
+    S: ptwo_bin_rel = copy.deepcopy(R)
     
     #R1
     for p in supp_plus_R:
@@ -136,7 +137,7 @@ def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer alg
                 change_made = True
     return change_made
 
-def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
+def R3(S: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
     """
     Input:
         S: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
@@ -152,8 +153,8 @@ def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
     since we only add values to keys already in the extended support, and the extended support uses consistent represenation.
     """
     change_made = False
-    for (a, b) in s:
-        for (c, d) in s:
+    for (a, b) in S:
+        for (c, d) in S:
             # Note that the nested loop structure makes it so we also check (c, a), (d, a) etc later.
             # Could add all 8 combinations now and do a "tringular nesting" instead of a square, but dont think it would help with anything
             supported_combinations = []
@@ -168,14 +169,14 @@ def R3(s: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
             if len(supported_combinations) == 0:
                 continue
 
-            overlap = s[(a,b)].intersection(s[(c,d)])
+            overlap = S[(a,b)].intersection(S[(c,d)])
             if len(overlap) == 0:
                 continue
 
             for p in supported_combinations:
-                pre_len = len(s[p])
-                s[p].update(overlap)
-                if pre_len != len(s[p]):
+                pre_len = len(S[p])
+                S[p].update(overlap)
+                if pre_len != len(S[p]):
                     change_made = True
     return change_made
 
@@ -213,9 +214,10 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
 
     tc(R) is the tranisitive closure of R.
     """
-    r_tc = R.copy()
+    r_tc = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
     while True:
-        if not R2(r_tc):
+        change_made = R2(r_tc)  # When no change is made, it's a transitive closure
+        if not change_made:    
             break
     
     for ab, xys in r_tc.items():
@@ -348,10 +350,9 @@ def find_roots(G: nx.DiGraph) -> set[ptwo]:
         
 
 def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
-    R = unify_representation(R)
-    pprint.pp(R)
+    R = unify_representation(R)                         # Make sure the representations of elements {a,b} = {b,a} are consistent.
     supp_plus_R = get_extended_support(X, R)            # 1
-    R_plus = get_r_plus(R, supp_plus_R)                 # 2
+    R_plus = get_R_plus(R, supp_plus_R)                 # 2
     if X1(R_plus) and X2(R, R_plus):                    # 3
         equiv_R_plus = get_equiv_r_plus(R_plus)         # 4
         Q_set = get_q_set(equiv_R_plus)                 # 5
@@ -403,54 +404,49 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
 
 
+def draw_DAG(DAG: nx.DiGraph) -> None:
+
+    for layer, nodes in enumerate(nx.topological_generations(DAG)):
+        for node in nodes:
+            DAG.nodes[node]["layer"] = layer
+
+    leaf_list = []
+    for node in DAG.nodes:
+        if len(node) == 1: #type: ignore
+            leaf_list.append(node)
+    leaf_layer = max(DAG.nodes[node]["layer"] for node in leaf_list)
+
+    for node in leaf_list:
+        DAG.nodes[node]["layer"] = leaf_layer
+
+    pos = nx.multipartite_layout(DAG, subset_key="layer")
+
+    nx.draw(DAG, pos)
+    nx.draw_networkx_labels(DAG, pos)
+    plt.show()
+
+
+
+
 
 def main():
-    X, r = read_constraints_csv("examples/example_3_9.csv")
+    X, r = read_constraints_csv("test_file.csv")
+
     # X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
     # r: ptwo_bin_rel = {
     #     ("x","y"): {("a","b"), ("q","t")},
     #     ("u","v"): {("b","a")}
     # }
-    # pprint.pp(r)
-    r2: ptwo_bin_rel = {
-        
-    }
-    r = unify_representation(r)
-    rp = get_r_plus(r, get_extended_support(X, r))
-    # pprint.pp(rp)
-    # print(X1(rp))
-    # print(X2(r, rp))
 
     res = Algorithm_1(X, r)
     if type(res) == tuple:
         g_r, n_r = res
     else:
+        print("Not realizable")
         return
     
-
-    # Code to render dags start here
-    
-    for layer, nodes in enumerate(nx.topological_generations(n_r)):
-        # `multipartite_layout` expects the layer as a node attribute, so add the
-        # numeric layer value as a node attribute
-        for node in nodes:
-            n_r.nodes[node]["layer"] = layer
-
-    leaf_list = []
-    for node in n_r.nodes:
-        if len(node) == 1: #type: ignore
-            leaf_list.append(node)
-    leaf_layer = max(n_r.nodes[node]["layer"] for node in leaf_list)
-    for node in leaf_list:
-        n_r.nodes[node]["layer"] = leaf_layer
-
-    pos = nx.multipartite_layout(n_r, subset_key="layer")
-
-    nx.draw(n_r, pos)
-    nx.draw_networkx_labels(n_r, pos)
-    plt.show()
-
-    # Code to render dags end here
+    draw_DAG(g_r)
+    draw_DAG(n_r)
     
     
 
