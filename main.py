@@ -248,7 +248,7 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
     return True
 
 
-def get_equiv_r_plus(r_plus: ptwo_bin_rel) -> ptwo_bin_rel:
+def get_equiv_r_plus(R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
         R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
@@ -259,18 +259,18 @@ def get_equiv_r_plus(r_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     and defined such that p equiv_r_plus q iff p R_plus q and q R_plus p.
     """
 
-    equiv_rel: ptwo_bin_rel = {p: {p} for p in r_plus.keys()}   # R_plus is reflexive, so (p,p) is in R_plus for all p in the extended support.
+    equiv_rel: ptwo_bin_rel = {p: {p} for p in R_plus.keys()}   # R_plus is reflexive, so (p,p) is in R_plus for all p in the extended support.
                                                                 # This is mainly for convienice to avoid key errors in the next part.
 
-    for p, qs in r_plus.items():
-        for q in qs:
-            if p in r_plus[q]:
-                equiv_rel[p].add(q)
+    for p, qs in R_plus.items():
+        for q in qs:                        # For each (p,q) in R_plus:
+            if p in R_plus[q]:              # if (q,p) in R_plus,
+                equiv_rel[p].add(q)         # then add (p,q) to equiv_R_plus
 
     return equiv_rel
 
 
-def get_q_set(equiv_r_plus: ptwo_bin_rel) -> set[ptwo]:
+def get_q_set(equiv_R_plus: ptwo_bin_rel) -> set[ptwo]:
     """
     Input:
         equiv_r_plus: An equivalence relation on the extended support of some relation R.
@@ -280,11 +280,11 @@ def get_q_set(equiv_r_plus: ptwo_bin_rel) -> set[ptwo]:
 
     to_keep = set()
     to_remove = set()
-    for a in equiv_r_plus.keys():
+    for a in equiv_R_plus.keys():
         if a in to_remove:
             continue
         to_keep.add(a)
-        bs = equiv_r_plus[a]
+        bs = equiv_R_plus[a]
         to_remove.update(bs)
         
     return to_keep
@@ -301,18 +301,18 @@ def get_order_r_plus(Q_set: set[ptwo], R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     For two classes [p] and [q] in Q_set, we have that [p] <= [q] iff p R_plus q. 
     """
 
-    order_r_plus = {p: {p} for p in Q_set}  # The reflexive pairs are part of the ordering, 
+    order_R_plus = {p: {p} for p in Q_set}  # The reflexive pairs are part of the ordering, 
                                             # but will not be represented in the canonical DAG 
                                             # since we only add edges between distinct classes
 
     for p in Q_set:
         for q in Q_set:
             if q in R_plus[p]:
-                order_r_plus[p].add(q)
+                order_R_plus[p].add(q)
 
-    return order_r_plus
+    return order_R_plus
 
-def get_canoncial_dag(order_r_plus: ptwo_bin_rel) -> nx.DiGraph:
+def get_canoncial_dag(order_R_plus: ptwo_bin_rel) -> nx.DiGraph:
     """
     Input:
         order_r_plus: An ordering of the equivalence classes of R_plus
@@ -322,22 +322,22 @@ def get_canoncial_dag(order_r_plus: ptwo_bin_rel) -> nx.DiGraph:
     See Definition 5.5. 
     """
 
-    g_r = nx.DiGraph(order_r_plus).reverse()        # reverse it so we get edges q -> p instead of p -> q
+    G_r = nx.DiGraph(order_R_plus).reverse()        # reverse it so we get edges q -> p instead of p -> q
                                                     # This performs step 1 and 2 in definition 5.5, but also adds a self-loop to each class
-    g_r.remove_edges_from(nx.selfloop_edges(g_r))   # This removes the self-loops
+    G_r.remove_edges_from(nx.selfloop_edges(G_r))   # This removes the self-loops
     
     # Find all classes [aa]
     leaf_list = []
-    for node in g_r.nodes:
+    for node in G_r.nodes:
         if node[0] == node[1]: #type: ignore
             leaf_list.append(node)
     
     leaf_dict = {node: node[0] for node in leaf_list} # Rename each (a,a) to a
-    g_r = nx.relabel_nodes(g_r, leaf_dict)
+    G_r = nx.relabel_nodes(G_r, leaf_dict)
 
-    return g_r
+    return G_r
 
-def get_canoncial_network(g_r) -> nx.DiGraph:
+def get_canoncial_network(G_r) -> nx.DiGraph:
     """
     Input:
         G_r: the canonical DAG for a relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
@@ -347,15 +347,15 @@ def get_canoncial_network(g_r) -> nx.DiGraph:
     See definition 6.3
     """
 
-    n_r = nx.transitive_reduction(g_r)  # Removing all shortcuts from G_r
+    N_r = nx.transitive_reduction(G_r)  # Removing all shortcuts from G_r
 
-    roots = find_roots(n_r)             # Find all roots of G_r
+    roots = find_roots(N_r)             # Find all roots of G_r
 
     if len(roots) != 1:                                                             # TODO: Can we ever have zero roots in G_r?
         for node in roots:
-            n_r.add_edge("rho", node)   # If there are multiple roots, connect them all as children to a new root rho.
+            N_r.add_edge("rho", node)   # If there are multiple roots, connect them all as children to a new root rho.
 
-    return n_r
+    return N_r
 
 def find_roots(G: nx.DiGraph) -> set[ptwo]:
     """
