@@ -1,6 +1,17 @@
 import csv
 
 
+"""
+The expected format for a csv file is that the first line lists all of the leaves, and every line after that uses 4 values to describe a constraint
+
+So the relation R on P_2(X) with X = {a,b,c,x,y,z} and constraints abRxy, acRxy and xyRbc would look like this:
+
+a,b,c,x,y,z
+a,b,x,y
+a,c,x,y
+x,y,b,c
+"""
+
 
 def read_constraints_csv(filename: str) -> tuple[set, dict]:
     with open(filename) as file:

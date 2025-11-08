@@ -3,12 +3,14 @@
 import networkx as nx
 import collections.abc # just for typechecking that we have things that can be used as nodes
 import copy
+import sys
 
 # For printing, testing and debugging
 import matplotlib.pyplot as plt
 import pprint
 
 from parse_input import read_constraints_csv
+from graph_drawing import draw_DAG
 
 
 type leaf = collections.abc.Hashable
@@ -23,17 +25,17 @@ The type ptwo represents elements in 𝒫₂(X), 1 and 2 element subsets of the 
 Since sets are not ordered, {a, b} = {b, a} and {a,a} = {a}. 
 They are implemented here as ordered pairs (tuples). 
 For tuples (a,b) != (b,a). So we make sure that for each set {a,b}={b,a}, we consistently represent it either only as (a,b) or only as (b,a).   
-Similarily since (a,a) != (a,), we always represent both {a} and {a,a} as (a,a).
+Similarily since (a,a) != (a,), we always represent {a} = {a,a} as (a,a).
 """
 
 type ptwo_bin_rel = dict[ptwo, set[ptwo]] 
 """
-The type ptwo_bin_rel represent a binary relation R over ptwo times ptwo.
+The type ptwo_bin_rel represent a binary relation R over 𝒫₂(X) ⨉ 𝒫₂(X).
 A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only if D[(a,b)] contains (x,y).  
 """
 
 
-# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) x P_2(X)
+# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) ⨉ 𝒫_2(X)
 
 # TODO: Double check that no changes are made by sideeffects to R or R_plus
 
@@ -48,7 +50,7 @@ def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
 
     Given a binary relation R, get the extended support supp_plus_R.
 
-    supp_R = { (p,q) in P_2(X) | there is some (a,b) in P_2(X) with (p,q)R(a,b) or (a,b)R(p,q)}
+    supp_R = { (p,q) in 𝒫₂(X) | there is some (a,b) in 𝒫₂(X) with (p,q)R(a,b) or (a,b)R(p,q)}
 
     supp_plus_R = supp_R union {(x,x) | x in X}
     """
@@ -77,7 +79,7 @@ def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
         The relexive-, transitive-, 2-consistent closure of R, called R_plus.
 
     This is done as described in Theorem 4.5:
-        Set S = R
+        Let S = R
         R1: Add pSp for each p in supp_plus_R
         Repeatedly apply the following rules until they can no longer be applied:
             R2: if pSq and qSr, add pSr
@@ -93,10 +95,9 @@ def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
             S[p].add(p)
 
     while True:
-        #R2
+
         change_r2 = R2(S)
-        
-        #R3
+
         change_r3 = R3(S, supp_plus_R)
         
         if not change_r2 and not change_r3:
@@ -134,6 +135,7 @@ def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer alg
             if p_size != len(S[p]):
                 change_made = True
     return change_made
+
 
 def R3(S: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
     """
@@ -401,64 +403,34 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
     return R
 
 
-
-def draw_DAG(G: nx.DiGraph) -> None:
-    """
-    Input:
-        G: A networkx DiGraph where internal nodes are tuples of leaves
-    Output:
-        None
-    
-    Draws the network with layers aligned using matplotlib and networkx multipartite layout.
-    """
-
-    for layer, nodes in enumerate(nx.topological_generations(G)):
-        for node in nodes:
-            G.nodes[node]["layer"] = layer
-
-    # TODO: This is bugged and sometimes draws the network wrong
-    # leaf_list = []
-    # for node in G.nodes:
-    #     if type(node) != tuple and node != "rho":   # When constructing the canonical dag/network for R, we relabeled all leaves to not be tuples anymore.
-    #         leaf_list.append(node)
-    # leaf_layer = min(G.nodes[node]["layer"] for node in leaf_list)
-
-    # for node in leaf_list:
-    #     G.nodes[node]["layer"] = leaf_layer
-
-    pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
-
-    nx.draw(G, pos=pos)
-    nx.draw_networkx_labels(G, pos=pos)
-    plt.show()
-
-
-
-
-
 def main():
 
+    if len(sys.argv) == 2:
+        constraint_file = sys.argv[1]
+    else:
+        constraint_file = input("Please write the name of a csv file defining a relation: ")
+
     try:
-        X, r = read_constraints_csv("examples/figure_4.csv")
-    except (ValueError, FileNotFoundError) as e:
+        X, r = read_constraints_csv(constraint_file)
+    except ValueError as e:
         print(e)
         return
+    except FileNotFoundError:
+        print("The file", constraint_file, "could not be found")
+        return
 
-    # X: set[leaf] = {"x", "y", "a", "b", "q", "t", "u", "v"}
-    # r: ptwo_bin_rel = {
-    #     ("x","y"): {("a","b"), ("q","t")},
-    #     ("u","v"): {("b","a")}
-    # }
 
     res = Algorithm_1(X, r)
     if type(res) == tuple:
         g_r, n_r = res
     else:
-        print("Not realizable")
+        print("The relation is not realizable")
         return
     
     draw_DAG(g_r)
     draw_DAG(n_r)
+
+
     
     
 
