@@ -14,6 +14,14 @@ x,y,b,c
 
 
 def read_constraints_csv(filename: str) -> tuple[set, dict]:
+    """
+    Input:
+        filename: A string with the name of a csv-file describing a leafset X and a relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        The leafset as a set of strings and the relation as a dictionary R where R[p] contains q means th pRq.
+
+    The file should have the leafs on the first line and on entry in the relation per following line.
+    """
     with open(filename) as file:
 
         rdr = csv.reader(file)

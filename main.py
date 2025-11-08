@@ -50,7 +50,7 @@ def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
 
     Given a binary relation R, get the extended support supp_plus_R.
 
-    supp_R = { (p,q) in 𝒫₂(X) | there is some (a,b) in 𝒫₂(X) with (p,q)R(a,b) or (a,b)R(p,q)}
+    supp_R = { p in 𝒫₂(X) | there is some q in 𝒫₂(X) with pRq or qRp }
 
     supp_plus_R = supp_R union {(x,x) | x in X}
     """
@@ -121,22 +121,23 @@ def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer alg
     """
     change_made = False
     for p, qs in S.items():
-            p_size = len(qs)
+            p_size = len(qs)            # Store original size to track if a change was made
 
-            to_add: set[ptwo] = set()
+            to_add: set[ptwo] = set()   # All r's such that pRqRr for some q
             for q in qs:
-                if q not in S:
+                if q not in S:          # To make sure we don't get key errors
                     continue
                 rs = S[q]
                 to_add.update(rs)
-            if len(to_add) > 0: # Needed to not add empty sets as elements
+            if len(to_add) > 0:         # Needed to not add empty sets as elements when no q was related to anything
                 S[p].update(to_add) 
 
-            if p_size != len(S[p]):
+            if p_size != len(S[p]):     # The size has a changed if something was added
                 change_made = True
     return change_made
 
 
+# TODO: The notation with ab and cd here doesn't match up that well with the article.
 def R3(S: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
     """
     Input:
@@ -153,36 +154,54 @@ def R3(S: ptwo_bin_rel, supp_plus: set[ptwo]) -> bool:
     since we only add values to keys already in the extended support, and the extended support uses consistent represenation.
     """
     change_made = False
-    for (a, b) in S:
-        for (c, d) in S:
+    for ab in S:
+        for cd in S:
+            # Supported combinations are all of (a,c), (a,d), (b,c), (b,d) that are in the extended support.
             # Note that the nested loop structure makes it so we also check (c, a), (d, a) etc later.
-            # Could add all 8 combinations now and do a "tringular nesting" instead of a square, but dont think it would help with anything
-            supported_combinations = []
-            if (a, c) in supp_plus:
-                supported_combinations.append((a, c))
-            if (a, d) in supp_plus:
-                supported_combinations.append((a, d))
-            if (b, c) in supp_plus:
-                supported_combinations.append((b, c))
-            if (b, d) in supp_plus:
-                supported_combinations.append((b, d))
+            supported_combinations = get_supported_combinations(ab, cd, supp_plus)
             if len(supported_combinations) == 0:
                 continue
 
-            overlap = S[(a,b)].intersection(S[(c,d)])
+            overlap = S[ab].intersection(S[cd])  # All xy such that abSxy and cdSxy 
             if len(overlap) == 0:
                 continue
 
             for p in supported_combinations:
-                pre_len = len(S[p])
+                pre_len = len(S[p])             # Save the length before updates to see if a change was made
                 S[p].update(overlap)
                 if pre_len != len(S[p]):
                     change_made = True
     return change_made
 
 
+def get_supported_combinations(ab: ptwo, cd: ptwo, supp_plus: set[ptwo]) -> set[ptwo]:
+    """
+    Input:
+        ab: A tuple (a,b)
+        cd: A tuple (c,d)
+        supp_plus: The extended support for some relation
+    Output:
+        All combinations (g,h) where 
+            g in (a,b) 
+            and h in (c,d) 
+            and (g,h) in supp_plus.
+    """
 
-# TODO: Double check X1 and X2
+    a, b = ab
+    c, d = cd
+    
+    supported_combinations = set()
+    if (a, c) in supp_plus:
+        supported_combinations.add((a, c))
+    if (a, d) in supp_plus:
+        supported_combinations.add((a, d))
+    if (b, c) in supp_plus:
+        supported_combinations.add((b, c))
+    if (b, d) in supp_plus:
+        supported_combinations.add((b, d))
+    
+    return supported_combinations
+
 
 def X1(R: ptwo_bin_rel) -> bool:
     """
@@ -195,9 +214,9 @@ def X1(R: ptwo_bin_rel) -> bool:
     Equivalently, for all a,b,x in X: if {a,b}R_plus{x,x}, then {a,b} == {x,x}. 
     """
     for (a, b), pqs in R.items():
-        for (p, q) in pqs:
-            if p == q and (p != a or p != b):
-                return False
+        for (p, q) in pqs:                      # Check for each abRpq:
+            if p == q and (p != a or p != b):   # if pq = pp, and ab != pp
+                return False                    # then the condtion is broken
     return True
 
 def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
@@ -216,15 +235,15 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
     """
     r_tc = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
     while True:
-        change_made = R2(r_tc)  # When no change is made, it's a transitive closure
+        change_made = R2(r_tc)  # When no change is made, it's the transitive closure
         if not change_made:    
             break
     
     for ab, xys in r_tc.items():
-        for xy in xys:
-            if (xy not in r_tc) or (ab not in r_tc[xy]):
-                if (ab in R_plus[xy]):
-                    return False
+        for xy in xys:                                      # Check for each (ab, xy) in tc(R).
+            if (xy not in r_tc) or (ab not in r_tc[xy]):    # If (xy, ab) not in tc(R),
+                if (ab in R_plus[xy]):                      # and (xy, ab) in R_plus
+                    return False                            # then the condition is broken.
             
     return True
 
@@ -240,7 +259,8 @@ def get_equiv_r_plus(r_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     and defined such that p equiv_r_plus q iff p R_plus q and q R_plus p.
     """
 
-    equiv_rel: ptwo_bin_rel = {p: {p} for p in r_plus.keys()}
+    equiv_rel: ptwo_bin_rel = {p: {p} for p in r_plus.keys()}   # R_plus is reflexive, so (p,p) is in R_plus for all p in the extended support.
+                                                                # This is mainly for convienice to avoid key errors in the next part.
 
     for p, qs in r_plus.items():
         for q in qs:
@@ -281,7 +301,9 @@ def get_order_r_plus(Q_set: set[ptwo], R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     For two classes [p] and [q] in Q_set, we have that [p] <= [q] iff p R_plus q. 
     """
 
-    order_r_plus = {p: {p} for p in Q_set} # These will all be removed again later
+    order_r_plus = {p: {p} for p in Q_set}  # The reflexive pairs are part of the ordering, 
+                                            # but will not be represented in the canonical DAG 
+                                            # since we only add edges between distinct classes
 
     for p in Q_set:
         for q in Q_set:
@@ -405,13 +427,14 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
 def main():
 
+    # Get csv file with constraints either as commandline argument or as user input
     if len(sys.argv) == 2:
         constraint_file = sys.argv[1]
     else:
         constraint_file = input("Please write the name of a csv file defining a relation: ")
 
     try:
-        X, r = read_constraints_csv(constraint_file)
+        X, R = read_constraints_csv(constraint_file)
     except ValueError as e:
         print(e)
         return
@@ -419,16 +442,16 @@ def main():
         print("The file", constraint_file, "could not be found")
         return
 
+    res = Algorithm_1(X, R)
 
-    res = Algorithm_1(X, r)
-    if type(res) == tuple:
-        g_r, n_r = res
+    if type(res) == tuple: # The type is tuple[nx.DiGraph, nx.DiGraph] if the relation was realizable
+        G_r, N_r = res
     else:
         print("The relation is not realizable")
         return
     
-    draw_DAG(g_r)
-    draw_DAG(n_r)
+    draw_DAG(G_r)
+    draw_DAG(N_r)
 
 
     
