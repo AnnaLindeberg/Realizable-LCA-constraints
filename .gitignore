@@ -1,1 +1,3 @@
 __pycache__/*
+/A-tests/*
+.DS_Store
