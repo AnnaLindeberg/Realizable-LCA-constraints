@@ -7,7 +7,6 @@ import sys
 
 # For printing, testing and debugging
 import matplotlib.pyplot as plt
-import pprint
 
 from parse_input import read_constraints_csv
 from graph_drawing import draw_DAG
@@ -35,10 +34,7 @@ A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only 
 """
 
 
-# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) ⨉ 𝒫_2(X)
-
-# TODO: Double check that no changes are made by sideeffects to R or R_plus
-
+# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) ⨉ 𝒫_2(X)? Currently done in parse_input.
 
 def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     """
@@ -233,19 +229,33 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
 
     tc(R) is the tranisitive closure of R.
     """
-    r_tc = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
-    while True:
-        change_made = R2(r_tc)  # When no change is made, it's the transitive closure
-        if not change_made:    
-            break
+
+    tc_R = get_transitive_closure(R)
     
-    for ab, xys in r_tc.items():
+    for ab, xys in tc_R.items():
         for xy in xys:                                      # Check for each (ab, xy) in tc(R).
-            if (xy not in r_tc) or (ab not in r_tc[xy]):    # If (xy, ab) not in tc(R),
+            if (xy not in tc_R) or (ab not in tc_R[xy]):    # If (xy, ab) not in tc(R),
                 if (ab in R_plus[xy]):                      # and (xy, ab) in R_plus
                     return False                            # then the condition is broken.
             
     return True
+
+def get_transitive_closure(R: ptwo_bin_rel) -> ptwo_bin_rel:
+    """
+    Input:
+        R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        The transitive closure of R.
+    
+    Makes a deepcopy of R and repeatedly applies the rule R2 on the copy to get the transitive closure.
+    """
+
+    tc_R = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
+    while True:
+        change_made = R2(tc_R)  # When no change is made, it's the transitive closure
+        if not change_made:    
+            return tc_R
+
 
 
 def get_equiv_r_plus(R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
@@ -342,7 +352,7 @@ def get_canoncial_network(G_r) -> nx.DiGraph:
     Input:
         G_r: the canonical DAG for a relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
     Output:
-        The caonincal network of R as networkx DiGraph
+        The canonincal network of R as networkx DiGraph
 
     See definition 6.3
     """
@@ -453,9 +463,6 @@ def main():
     draw_DAG(G_r)
     draw_DAG(N_r)
 
-
-    
-    
 
 if __name__ == "__main__":
     main()
