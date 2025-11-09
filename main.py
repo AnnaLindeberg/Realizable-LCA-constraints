@@ -72,7 +72,7 @@ def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
         R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X)
         supp_plus_R: The extended support of R
     Output:
-        The relexive-, transitive-, 2-consistent closure of R, called R_plus.
+        The relexive-, transitive-, cross-consistent closure of R, called R_plus.
 
     This is done as described in Theorem 4.5:
         Let S = R
@@ -202,7 +202,7 @@ def get_supported_combinations(ab: ptwo, cd: ptwo, supp_plus: set[ptwo]) -> set[
 def X1(R: ptwo_bin_rel) -> bool:
     """
     Input:
-        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+        R_plus: The reflexive-, transitive-, cross-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
     Output:
         True if the relation R satisifies condition X1 given in definition 5.1
 
@@ -219,7 +219,7 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
     """
     Input:
         R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
-        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+        R_plus: The reflexive-, transitive-, cross-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
     Output:
         True if the relation R satisifies condition X2 given in definition 5.1
 
@@ -261,7 +261,7 @@ def get_transitive_closure(R: ptwo_bin_rel) -> ptwo_bin_rel:
 def get_equiv_r_plus(R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
-        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
+        R_plus: The reflexive-, transitive-, cross-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X).
     Output:
         An equivalence relation equiv_r_plus as described in Lemma 5.3
         
@@ -304,7 +304,7 @@ def get_order_r_plus(Q_set: set[ptwo], R_plus: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
         Q_set: the set of equivalence classes in equiv_r_plus
-        R_plus: The reflexive-, transitive-, 2-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
+        R_plus: The reflexive-, transitive-, cross-consistent closure of a binary relation R on 𝒫₂(X) ⨉ 𝒫₂(X)
     Output:
         An ordering of the equivalnce classes in Q_set as defined in Lemma 5.4
 
