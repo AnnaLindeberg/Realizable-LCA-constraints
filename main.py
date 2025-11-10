@@ -19,7 +19,6 @@ from helper_functions import (
     get_canoncial_network
 )
    
-        
 
 def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
     """
@@ -40,8 +39,6 @@ def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.Di
         N_r = get_canoncial_network(G_r)                # 8
         return G_r, N_r                                 # 9
     return False                                        # 10
-
-
 
 
 def Algorithm_1_full_output(X: set[leaf], R: ptwo_bin_rel) -> tuple[bool, list]:
@@ -94,9 +91,12 @@ def main():
     else:
         print("The relation is not realizable")
         return
-    
+
+    import matplotlib.pyplot as plt
     draw_DAG(G_r)
+    plt.show()
     draw_DAG(N_r)
+    plt.show()
 
 
 if __name__ == "__main__":

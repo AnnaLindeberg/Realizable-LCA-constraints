@@ -32,9 +32,7 @@ def draw_DAG(G: nx.DiGraph,
 
     pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
 
-    nx.draw(G, pos=pos, ax=ax)
-    nx.draw_networkx_labels(G, pos=pos, ax=ax)
-    plt.show()
+    nx.draw(G, pos=pos, ax=ax, with_labels=True)
 
 
 def plot_results(realizable: bool, results_list: list) -> None:
@@ -45,8 +43,68 @@ def plot_results(realizable: bool, results_list: list) -> None:
 
 
 def plot_realizable_results(results_list) -> None:
-    pass
+    R, supp_plus_R, R_plus, equiv_R_plus, Q_set, order_R_plus, G_r, N_r = results_list
+    graphs = [
+        nx.DiGraph(R).reverse(),
+        nx.DiGraph(supp_plus_R).reverse(),
+        nx.DiGraph(R_plus).reverse(),
+        nx.DiGraph(equiv_R_plus),
+        nx.DiGraph(order_R_plus),
+        G_r,
+        N_r
+    ]
+    titles = [
+        "R",
+        "Extended support",
+        "R-plus",
+        "Equivalence relation",
+        "Ordering",
+        "Canonical DAG",
+        "Canoncial Network"
+    ]
+
+    fig = plt.figure(figsize=(12, 10))
+
+    # Row 1: 3 subplots
+    axes = []
+    for i in range(3):
+        ax = fig.add_subplot(3, 3, i + 1)
+        axes.append(ax)
+
+    # Row 2: 2 subplots centered (positions 4 and 5 in a 3x3 grid)
+    for i in range(3, 5):
+        ax = fig.add_subplot(3, 3, i + 1)
+        axes.append(ax)
+
+    # Row 3: 2 subplots centered (positions 7 and 8 in a 3x3 grid)
+    for i in range(6, 8):
+        ax = fig.add_subplot(3, 3, i + 1)
+        axes.append(ax)
+
+    for ax, graph, title in list(zip(axes, graphs, titles)):
+        if "Canonical" in title:
+            draw_DAG(graph, ax=ax)
+        else:
+            nx.draw(graph, ax=ax, with_labels=True)
+        ax.set_title(title)
+
+    plt.tight_layout()
 
 
 def plot_non_realizable_results(results_list) -> None:
-    pass
+    R, supp_plus_R, R_plus = results_list
+    graphs = [
+        nx.DiGraph(R).reverse(),
+        nx.DiGraph(supp_plus_R).reverse(),
+        nx.DiGraph(R_plus).reverse(),
+    ]
+    titles = [
+        "R",
+        "Extended support",
+        "R-plus"
+    ]
+    _, axes = plt.subplots(1,3)
+
+    for ax, graph, title in zip(axes, graphs, titles):
+        nx.draw(graph, ax=ax, pos=nx.spring_layout(graph), with_labels=True)
+        ax.set_title(title)
