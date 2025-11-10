@@ -34,8 +34,6 @@ A relation R is represented by a dictionary D such that {a,b}R{x,y} if and only 
 """
 
 
-# TODO: add a step/function to verify that the relation R actually is defined over 𝒫_2(X) ⨉ 𝒫_2(X)? Currently done in parse_input.
-
 def get_extended_support(X: set[leaf], R: ptwo_bin_rel) -> set[ptwo]:
     """
     Input: 
@@ -361,7 +359,7 @@ def get_canoncial_network(G_r) -> nx.DiGraph:
 
     roots = find_roots(N_r)             # Find all roots of G_r
 
-    if len(roots) != 1:                                                             # TODO: Can we ever have zero roots in G_r?
+    if len(roots) != 1:
         for node in roots:
             N_r.add_edge("rho", node)   # If there are multiple roots, connect them all as children to a new root rho.
 
@@ -382,6 +380,13 @@ def find_roots(G: nx.DiGraph) -> set[ptwo]:
         
 
 def Algorithm_1(X: set[leaf], R: ptwo_bin_rel) -> bool | tuple[nx.DiGraph, nx.DiGraph]:
+    """
+    Input:
+        X: Some ground set
+        R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        False if the relation is not realizable, otherwise returns the Canonical DAG and Canonical Network of R.
+    """
     R = unify_representation(R)                         # Make sure the representations of elements {a,b} = {b,a} are consistent.
     supp_plus_R = get_extended_support(X, R)            # 1
     R_plus = get_R_plus(R, supp_plus_R)                 # 2
@@ -434,6 +439,28 @@ def unify_representation(R: ptwo_bin_rel) -> ptwo_bin_rel:
 
     return R
 
+def Algorithm_1_full_output(X: set[leaf], R: ptwo_bin_rel) -> tuple[bool, list]:
+    """
+    Input:
+        X: Some ground set
+        R: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+    Output:
+        False and a list with [R, supp_plus_R, R_plus] if the relations is not realizable.
+        True and a list with [R, supp_plus_R, R_plus, equiv_R_plus, Q_set, order_R_plus, G_r, N_r] if the relation is realizable.
+        
+    Does the same thing as Algorithm_1 but also returns the result of each step in the final output.
+    """
+    R = unify_representation(R)                         # Make sure the representations of elements {a,b} = {b,a} are consistent.
+    supp_plus_R = get_extended_support(X, R)            # 1
+    R_plus = get_R_plus(R, supp_plus_R)                 # 2
+    if X1(R_plus) and X2(R, R_plus):                    # 3
+        equiv_R_plus = get_equiv_r_plus(R_plus)         # 4
+        Q_set = get_q_set(equiv_R_plus)                 # 5
+        order_R_plus = get_order_r_plus(Q_set, R_plus)  # 6
+        G_r = get_canoncial_dag(order_R_plus)           # 7
+        N_r = get_canoncial_network(G_r)                # 8
+        return True, [R, supp_plus_R, R_plus, equiv_R_plus, Q_set, order_R_plus, G_r, N_r]            
+    return False, [R, supp_plus_R, R_plus]         
 
 def main():
 

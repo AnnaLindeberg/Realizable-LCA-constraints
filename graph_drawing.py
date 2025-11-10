@@ -1,11 +1,15 @@
 
 import networkx as nx
+import matplotlib.axes
 import matplotlib.pyplot as plt
 
-def draw_DAG(G: nx.DiGraph) -> None:
+def draw_DAG(G: nx.DiGraph, 
+             ax: matplotlib.axes.Axes | None=None
+             ) -> None:
     """
     Input:
         G: A networkx DiGraph where internal nodes are tuples of leaves
+        ax: 
     Output:
         None
     
@@ -28,6 +32,21 @@ def draw_DAG(G: nx.DiGraph) -> None:
 
     pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
 
-    nx.draw(G, pos=pos)
-    nx.draw_networkx_labels(G, pos=pos)
+    nx.draw(G, pos=pos, ax=ax)
+    nx.draw_networkx_labels(G, pos=pos, ax=ax)
     plt.show()
+
+
+def plot_results(realizable: bool, results_list: list) -> None:
+    if realizable:
+        plot_realizable_results(results_list)
+    else:
+        plot_non_realizable_results(results_list)
+
+
+def plot_realizable_results(results_list) -> None:
+    pass
+
+
+def plot_non_realizable_results(results_list) -> None:
+    pass
