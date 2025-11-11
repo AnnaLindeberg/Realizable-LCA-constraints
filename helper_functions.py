@@ -59,45 +59,46 @@ def get_R_plus(R: ptwo_bin_rel, supp_plus_R: set[ptwo]) -> ptwo_bin_rel:
 
     while True:
 
-        change_r2 = R2(S)
+        # R2, applied exhaustivley
+        S = get_transitive_closure(S)
 
-        change_r3 = R3(S, supp_plus_R)
+        change_made = R3(S, supp_plus_R)
         
-        if not change_r2 and not change_r3:
+        if change_made:
             break           
 
     return S
 
 
-def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer algorithm or similar to use?
-    """
-    Input:
-        S: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
-    Output:
-        True if one or more application of the rule R2 was performed, False otherwise.
+# def R2(S: ptwo_bin_rel) -> bool: # TODO: Is there a better transitive closer algorithm or similar to use?
+#     """
+#     Input:
+#         S: A binary relation on 𝒫₂(X) ⨉ 𝒫₂(X).
+#     Output:
+#         True if one or more application of the rule R2 was performed, False otherwise.
 
-    For each pSq in S, S[p] contains q. 
-    For each qSr in S, S[q] contains r.
-    Loops over all pair pSq in the dictionary, and for each such pair adds all r's in S[q] to S[p].
+#     For each pSq in S, S[p] contains q. 
+#     For each qSr in S, S[q] contains r.
+#     Loops over all pair pSq in the dictionary, and for each such pair adds all r's in S[q] to S[p].
 
-    Repeated application until False is returned gives the transitive closure of S.
-    """
-    change_made = False
-    for p, qs in S.items():
-            p_size = len(qs)            # Store original size to track if a change was made
+#     Repeated application until False is returned gives the transitive closure of S.
+#     """
+#     change_made = False
+#     for p, qs in S.items():
+#             p_size = len(qs)            # Store original size to track if a change was made
 
-            to_add: set[ptwo] = set()   # All r's such that pRqRr for some q
-            for q in qs:
-                if q not in S:          # To make sure we don't get key errors
-                    continue
-                rs = S[q]
-                to_add.update(rs)
-            if len(to_add) > 0:         # Needed to not add empty sets as elements when no q was related to anything
-                S[p].update(to_add) 
+#             to_add: set[ptwo] = set()   # All r's such that pRqRr for some q
+#             for q in qs:
+#                 if q not in S:          # To make sure we don't get key errors
+#                     continue
+#                 rs = S[q]
+#                 to_add.update(rs)
+#             if len(to_add) > 0:         # Needed to not add empty sets as elements when no q was related to anything
+#                 S[p].update(to_add) 
 
-            if p_size != len(S[p]):     # The size has a changed if something was added
-                change_made = True
-    return change_made
+#             if p_size != len(S[p]):     # The size has a changed if something was added
+#                 change_made = True
+#     return change_made
 
 
 # TODO: The notation with ab and cd here doesn't match up that well with the article.
@@ -207,6 +208,7 @@ def X2(R: ptwo_bin_rel, R_plus: ptwo_bin_rel) -> bool:
             
     return True
 
+# TODO: Need to verify this really is correct
 def get_transitive_closure(R: ptwo_bin_rel) -> ptwo_bin_rel:
     """
     Input:
@@ -217,11 +219,17 @@ def get_transitive_closure(R: ptwo_bin_rel) -> ptwo_bin_rel:
     Makes a deepcopy of R and repeatedly applies the rule R2 on the copy to get the transitive closure.
     """
 
-    tc_R = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
-    while True:
-        change_made = R2(tc_R)  # When no change is made, it's the transitive closure
-        if not change_made:    
-            return tc_R
+    R_graph = nx.DiGraph(R)
+    tc_R_graph = nx.transitive_closure(R_graph)
+    tc_R = nx.to_dict_of_lists(tc_R_graph)
+    tc_R = {key: set(val) for key, val in tc_R.items()}
+    return tc_R # type: ignore
+
+    # tc_R = copy.deepcopy(R)     # Use a copy of R as base for the transitive closure
+    # while True:
+    #     change_made = R2(tc_R)  # When no change is made, it's the transitive closure
+    #     if not change_made:    
+    #         return tc_R
 
 
 
